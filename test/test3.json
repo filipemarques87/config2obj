@@ -1,0 +1,16 @@
+{
+    "property1": {
+        "key2": "value2",
+        "superkey": {
+            "superkey1": "supervalue1"
+        }
+    },
+    "property2": {
+        "array1": [
+            "arrvalue1",
+            "arrvalue2",
+            "arrvalue3"
+        ],
+        "array2": []
+    }
+}
