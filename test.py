@@ -31,14 +31,14 @@ schema = {
             "array1": {
                 "type": "array",
                 "empty": False,
-                "child": {
+                "childs": {
                     "converter": lambda x: "array 1 key: " + str(x)
                 }
             },
             "array2": {
                 "type": "array",
                 "empty": True,
-                "child": {
+                "childs": {
                     "converter": lambda x: "array 2 key: " + str(x)
                 }
             }
@@ -48,7 +48,7 @@ schema = {
 
 
 def test_ok():
-    conf = config2obj.load("test1.json", schema, ctype="json")
+    conf = config2obj.load("./test/test1.json", schema, ctype="json")
     assert str(type(conf)) == "<class 'config2obj.ConfigObject'>"
     assert str(type(conf.property1)) == "<class 'config2obj.ConfigObject'>"
     assert conf.property1.key1 == "VALUE1"
@@ -70,13 +70,13 @@ def test_ok():
 
 def test_empty_array():
     with pytest.raises(ValueError) as e:
-        conf = config2obj.load("test2.json", schema, ctype="json")
+        conf = config2obj.load("./test/test2.json", schema, ctype="json")
     assert "Array array1 cannot be empty" == str(e.value)
 
 
 def test_mandatory():
     with pytest.raises(ValueError) as e:
-        conf = config2obj.load("test3.json", schema, ctype="json")
+        conf = config2obj.load("./test/test3.json", schema, ctype="json")
     assert "key missing 'key1'" == str(e.value)
 
 
@@ -126,7 +126,7 @@ def test_schema_1():
     }
 
     with pytest.raises(ValueError) as e:
-        conf = config2obj.load("test1.json", schema, ctype="json")
+        conf = config2obj.load("./test/test1.json", schema, ctype="json")
     assert "not recognize type: invalid" == str(e.value)
 
 
@@ -176,5 +176,5 @@ def test_schema_2():
     }
 
     with pytest.raises(ValueError) as e:
-        conf = config2obj.load("test1.json", schema, ctype="json")
+        conf = config2obj.load("./test/test1.json", schema, ctype="json")
     assert "'converter' for attribute must be callable" == str(e.value)
