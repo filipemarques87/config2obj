@@ -45,7 +45,7 @@ def _accept_empty(props):
 
 
 def _to_object(data, schema):
-    attributes = {}
+    attributes = {"raw_config": data}
     for k, props in schema.items():
         if "type" in props:
             otype = props["type"]
@@ -54,7 +54,7 @@ def _to_object(data, schema):
             elif otype == "array":
                 if not _accept_empty(props) and len(data[k]) == 0:
                     raise ValueError(f"Array {k} cannot be empty")
-                attributes[k] = [_convert(props["child"], value) for value in data[k]]
+                attributes[k] = [_convert(props["childs"], value) for value in data[k]]
             else:
                 raise ValueError(f"not recognize type: {otype}")
         else:
