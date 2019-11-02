@@ -1,83 +1,91 @@
 import json
 import os
+import yaml
 
 
-def _load_json(filename):
-    with open(filename) as json_file:
-        data = json.load(json_file)
-    return data
+def default(arg1):
+    '''
+    Sets a default value to a property if it is not present in
+    configuration file.
+
+    Can be a constant ("text", False, 123, []) or can be also a
+    function (lambda : now())
+    '''
+    def default_decorator(func):
+        def wrapper(self):
+            try:
+                return func(self)
+            except KeyError:
+                # default value can be also a callable
+                if callable(arg1):
+                    return arg1()
+                return arg1
+        return wrapper
+    return default_decorator
 
 
-def _get_default(attr):
-    if "default" not in attr:
-        return None
-    elif callable(attr["default"]):
-        return attr["default"]()
-    else:
-        return attr["default"]
+def converter(arg1):
+    '''
+    Converts a value from a property according to the converter.
+    The converter must be a callable object (like a lambda).
 
+    If the value to apply the convert is a constant ("text", False, 123, [])
+    the  apply it; if is a list, applyt he converter at each element
+    on the list
 
-def _convert(attr, val):
-    if "converter" not in attr:
-        return val
-    elif callable(attr["converter"]):
-        return attr["converter"](val)
-    else:
-        raise ValueError(f"'converter' for attribute must be callable")
+    '''
+    def converter_decorator(func):
+        def wrapper(self):
+            if not callable(arg1):
+                raise Exception("Converter must be callable")
 
-
-def _get_value(name, data, schema):
-    if name not in data:
-        # madatory by default
-        is_mandatory = "mandatory" not in schema or bool(schema["mandatory"])
-        if is_mandatory:
-            raise ValueError(f"key missing '{name}'")
-        else:
-            return _get_default(schema)
-    else:
-        return _convert(schema, data[name])
-
-
-def _accept_empty(props):
-    return "empty" in props and bool(props["empty"])
-
-        # Creates a object from a dict
-
-
-def _to_object(data, schema):
-    attributes = {"raw_config": data}
-    for k, props in schema.items():
-        if "type" in props:
-            otype = props["type"]
-            if otype == "object":
-                attributes[k] = _to_object(data[k], props["childs"])
-            elif otype == "array":
-                if not _accept_empty(props) and len(data[k]) == 0:
-                    raise ValueError(f"Array {k} cannot be empty")
-                attributes[k] = [_convert(props["childs"], value) for value in data[k]]
+            val = func(self)
+            if isinstance(val, list):
+                return [arg1(v) for v in val]
+            elif isinstance(val, (str, bool, int, float)) or val is None:
+                return arg1(val)
             else:
-                raise ValueError(f"not recognize type: {otype}")
-        else:
-            # simple value (string, int, boolean, ...)
-            attributes[k] = _get_value(k, data, props)
-
-    # returns an object that represents the config
-    return type("ConfigObject", (), attributes)()
+                raise Exception("Invalid type to apply the converter")
+        return wrapper
+    return converter_decorator
 
 
-def load(filename, schema, ctype=None):
+class BasicConfigProperty():
     '''
-    Loads the configuration from a file.
-    The configuration type is deduced from the file extentions if the type variable is not defined.
+    Basic config property.
+    Every complex property should inherit from this class.
     '''
 
-    if ctype is None:
-        not_used, ctype = os.path.splitext(filename)
-        ctype = ctype[1:]
+    def __init__(self, data):
+        self._data = data
 
-    data = None
-    if ctype == "json":
-        data = _load_json(filename)
+    def get(self, key):
+        return self._data[key]
 
-    obj = _to_object(data, schema)
-    return obj
+
+class BasicConfigObject(BasicConfigProperty):
+    '''
+    Basic config object.
+    Every base config class should inherit from this class.
+    '''
+
+    def __init__(self, filename, ctype=None):
+        self._filename = filename
+        self._ctype = self._get_ctype(self._filename, ctype)
+        super().__init__(self._load_data(self._filename, ctype))
+
+    def _get_ctype(self, filename, ctype):
+        if ctype is None:
+            not_used, ctype = os.path.splitext(self._filename)
+            return ctype[1:]
+
+    def _load_data(self, filename, ctype):
+        if self._ctype == "json":
+            with open(filename, "r") as json_file:
+                return json.load(json_file)
+        elif self._ctype == "yaml":
+            with open(filename, "r") as ymlfile:
+                return yaml.load(ymlfile, Loader=yaml.FullLoader)
+
+        raise Exception(f"{ctype} not supported")
+
